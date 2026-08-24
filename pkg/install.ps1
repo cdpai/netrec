@@ -11,7 +11,8 @@
 
 # -NoPath  : stamp the jar path into netrec.jrc but leave PATH untouched.
 # -NoPause : accepted so install.cmd can pass it straight through; not used here.
-param([switch]$NoPath, [switch]$NoPause)
+# -NoShortcut : do not put a "start the browser for netrec" shortcut on the desktop.
+param([switch]$NoPath, [switch]$NoPause, [switch]$NoShortcut)
 
 $ErrorActionPreference = 'Stop'
 
@@ -100,7 +101,44 @@ if (($env:PATH -split ';' | Where-Object { $_.Trim().TrimEnd('\') -eq $here }).C
     $env:PATH = $env:PATH.TrimEnd(';') + ';' + $here
 }
 
-# ---- 5. warn if some other netrec is shadowing this one ----------------------------------
+# ---- 5. a desktop shortcut that starts the browser with recording on ---------------------
+# The browser is the one part of this that cannot configure itself: it only listens for the
+# DevTools Protocol if it was given --remote-debugging-port at startup, and the port is a
+# random per-install number nobody is going to remember. Left as a command to look up, that
+# step is where the tool quietly stops being used -- so it becomes a double-click.
+if ($NoShortcut) {
+    Write-Host '  [--] -NoShortcut given, so no desktop shortcut was created.'
+} else {
+    $launcher = Join-Path $here 'start-browser-debug.cmd'
+    if (-not (Test-Path $launcher)) {
+        Write-Host '  [??] start-browser-debug.cmd is not in this folder, so no shortcut was created.'
+    } else {
+        # Borrow the browser's own icon, so the shortcut looks like what it opens.
+        $iconCands = @("$env:LOCALAPPDATA\Vivaldi\Application\vivaldi.exe",
+                       "$env:PROGRAMFILES\Vivaldi\Application\vivaldi.exe",
+                       "$env:PROGRAMFILES\Google\Chrome\Application\chrome.exe",
+                       "${env:PROGRAMFILES(X86)}\Google\Chrome\Application\chrome.exe",
+                       "${env:PROGRAMFILES(X86)}\Microsoft\Edge\Application\msedge.exe")
+        $icon = $iconCands | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+
+        $desktop = [Environment]::GetFolderPath('Desktop')
+        $lnkPath = Join-Path $desktop 'Start browser for netrec.lnk'
+        try {
+            $shell = New-Object -ComObject WScript.Shell
+            $lnk = $shell.CreateShortcut($lnkPath)
+            $lnk.TargetPath       = $launcher
+            $lnk.WorkingDirectory = $here
+            $lnk.Description      = 'Start the browser with the netrec recording port open, then netrec can see its traffic'
+            if ($icon) { $lnk.IconLocation = ($icon + ',0') }
+            $lnk.Save()
+            Write-Host ("  [ok] desktop shortcut: {0}" -f $lnkPath)
+        } catch {
+            Write-Host ("  [??] could not create the desktop shortcut ({0}). Run start-browser-debug.cmd from this folder instead." -f $_.Exception.Message)
+        }
+    }
+}
+
+# ---- 6. warn if some other netrec is shadowing this one ----------------------------------
 $onPath = @(Get-Command netrec -All -ErrorAction SilentlyContinue |
             Where-Object { $_.Source } |
             Where-Object { (Split-Path -Parent $_.Source).TrimEnd('\') -ne $here })
@@ -110,7 +148,7 @@ if ($onPath.Count -gt 0) {
     $onPath | ForEach-Object { Write-Host ("       {0}" -f $_.Source) }
 }
 
-# ---- 6. prove it runs --------------------------------------------------------------------
+# ---- 7. prove it runs --------------------------------------------------------------------
 # Warm the cache first and throw the output away. The run that BUILDS the AOT cache prints a
 # few hundred "[warning][aot] Skipping ..." lines, which are normal, harmless, and meaningless
 # to anyone installing a tool -- showing them would bury the part that matters.
@@ -142,6 +180,9 @@ Write-Host '  Open a NEW terminal (this one does not know about the PATH change)
 Write-Host ''
 Write-Host '      netrec --help'
 Write-Host '      netrec config --detect'
+Write-Host ''
+Write-Host '  To record, start the browser from the desktop shortcut "Start browser for netrec"'
+Write-Host '  (or run start-browser-debug.cmd here) -- a browser started any other way has no port open.'
 Write-Host ''
 Write-Host '  Then read HOWTO.md in this folder -- it walks through an actual capture.'
 Write-Host ''

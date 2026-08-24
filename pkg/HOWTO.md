@@ -22,40 +22,30 @@ If you would rather not touch PATH at all, skip `install.cmd` and run it as `net
 
 The first run is slow, perhaps half a minute, because it builds a startup cache next to the jar. Every run after that is quick. This is normal and it happens once.
 
-## Step 2 — one-time browser setup
+## Step 2 — start the browser so it can be recorded
 
-netrec talks to the browser over the Chrome DevTools Protocol, and a browser only listens for that if you asked it to when it started. So this is the one piece of setup that is genuinely required, and it has to be redone each time you start the browser fresh.
+Double-click **"Start browser for netrec"** on your desktop. That is the whole step.
 
-First, find out which port netrec expects:
+`install.cmd` put that shortcut there; it runs `start-browser-debug.cmd` from this folder, which you can also run directly. It opens Vivaldi (or Chrome, or Edge) with the recording port switched on, and tells you when the port is actually answering.
 
-```
-netrec config
-```
+It is worth knowing why this needs a shortcut at all, because it is the one thing that catches everybody. A browser can only be recorded if it was told to listen for the DevTools Protocol **at the moment it started** — and a browser that is already running ignores being told later. Start Vivaldi normally, then run the command with the port, and all that happens is your existing Vivaldi opens another window: no port, no error message, and netrec simply sees nothing. So the browser has to be closed completely and started again. The script notices this for you, offers to close it, and reopens it with the same profile so your tabs and your logins are all still there.
 
-That prints the port and the exact command line to use. The port is randomised per install on purpose, so it is not the well-known 9222 that every tutorial on the internet uses.
+The port itself is a random number chosen when netrec was installed, deliberately not the well-known 9222 that every tutorial uses, which is another reason not to type this by hand. `netrec config` prints it if you want to see it.
 
-Now close the browser completely and start it again with that port:
-
-```
-vivaldi.exe --remote-debugging-port=<PORT>
-```
-
-Chrome and Edge take the same flag. Log in, and navigate to the page you care about, exactly as you normally would.
-
-If a browser is already running with debugging on some port, you do not have to guess:
-
-```
-netrec config --detect          probes localhost and reports what it finds
-netrec config --detect --adopt  and saves that port as the setting
-```
-
-Check that netrec can see your tabs:
+Once the browser is up: log in, and go to the page you care about, exactly as you normally would. Then check netrec can see it:
 
 ```
 netrec tabs
 ```
 
-If that lists your tabs, everything is connected and you never need to think about the port again for this browser session.
+If that lists your tabs, you are connected and you need not think about the port again for this browser session. If it is empty, the browser was started some other way — close it and use the shortcut.
+
+If a browser happens to be running with debugging on some other port already, netrec can find and adopt it instead:
+
+```
+netrec config --detect          probes localhost and reports what it finds
+netrec config --detect --adopt  and saves that port as the setting
+```
 
 ## Step 3 — capture something
 
@@ -162,11 +152,13 @@ The intended workflow is a conversation. You tell the agent what you are about t
 
 The two things worth telling the agent explicitly: attach before you click, and ask for `--reveal` only at the moment it actually needs to run a request, because a revealed cookie in a chat transcript is a leaked cookie.
 
+The same loop is how you get a crawler or a scraper built for a site with no documented API. One capture gives the agent a single request; what it actually needs is the *variation*, so do each variant behind its own mark — page two, a filter applied, a different item, the last page. From a handful of those the agent can see which parameter carries the pagination, which header the server actually insists on, and which field tells it when to stop, and it can then write a client that works instead of one that guesses.
+
 ## If something is not working
 
 `netrec status` — is the daemon up, what is it recording, how much is stored. It never starts the daemon, so it is always a safe thing to run.
 
-`netrec tabs` returns nothing or errors — the browser was not started with the debugging port, or was started with a different one. Close it fully and start it again with the flag from `netrec config`. A browser that was already running when you added the flag does not pick it up.
+`netrec tabs` returns nothing or errors — the browser was not started with the debugging port. Close it completely and use the "Start browser for netrec" shortcut. A browser that was already running when the flag was added does not pick it up, and says nothing about it.
 
 `netrec rec` exits non-zero — no tab matched. Run `netrec tabs` and match a substring you can actually see, or use `--wait 30` to sit and wait for the tab to appear.
 

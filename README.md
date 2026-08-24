@@ -20,12 +20,25 @@ There is a single persistent daemon. It holds the DB, owns the recorder, and ser
 The only prerequisite is a JDK 21 or newer (25 recommended) with `java.exe` on PATH. Grab the standalone zip from the [latest release](https://github.com/littlejlib/netrec/releases/latest), unzip it anywhere, and run `install.cmd`:
 
 ```
-curl -L -o netrec.zip https://github.com/littlejlib/netrec/releases/download/v0.1/netrec-0.1-win-x64.zip
+curl -L -o netrec.zip https://github.com/littlejlib/netrec/releases/download/v0.2/netrec-0.2-win-x64.zip
 tar -xf netrec.zip
 netrec\install.cmd
 ```
 
-`install.cmd` points `netrec.exe` at the jar beside it and adds the folder to your user PATH. It needs no administrator rights, it is idempotent, and `-NoPath` makes it leave PATH alone. Then open a **new** terminal and run `netrec config`. `HOWTO.md` in the zip walks through an actual capture.
+`install.cmd` points `netrec.exe` at the jar beside it, adds the folder to your user PATH, and puts a **"Start browser for netrec"** shortcut on your desktop. It needs no administrator rights and it is idempotent; `-NoPath` and `-NoShortcut` skip either half. Then open a **new** terminal and run `netrec config`. `HOWTO.md` in the zip walks through an actual capture.
+
+## Getting the browser recordable
+
+A browser only listens for the DevTools Protocol if it was given `--remote-debugging-port` **when it started**, and a browser that is already running ignores the flag entirely -- the second invocation hands the URL to the existing process and exits, no port opens, and nothing reports an error. That silence is the usual reason netrec appears not to work.
+
+So use the desktop shortcut, or `start-browser-debug.cmd`, rather than composing the command line yourself. It reads the port from netrec, notices a browser already running and offers to restart it (same profile, so logins survive), launches it, and then confirms the port is actually answering before claiming success.
+
+```
+start-browser-debug.cmd            # Vivaldi if present, else Chrome, else Edge
+start-browser-debug.cmd -Check    # report the port and what is running; change nothing
+start-browser-debug.cmd -Force    # close a running browser without asking
+start-browser-debug.cmd -Browser chrome
+```
 
 The first run builds a JDK AOT startup cache next to the jar — about half a minute and 30 MB, once. Every run afterwards takes about a second.
 
