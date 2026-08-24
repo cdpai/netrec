@@ -1,0 +1,30 @@
+# Build output
+/target/
+/dist/
+*.jar
+*.aot
+*.aot.config
+
+# Never publish: PRPs and conversation logs carry real ids, paths and internal reasoning
+/prp/
+/.claude/
+CLAUDE.md
+
+# Credentials, in every shape
+credentials.json
+*.key
+*.pem
+*.p12
+.env
+
+# Logs
+*.log
+
+# Stray dirs if the daemon is ever launched from the project root
+/log/
+/backups/
+/config/
+
+# The shipped launcher is a copy of jr.exe, fetched at package time by make-dist.ps1 --
+# a binary in the repo goes stale silently, and jr is its own project.
+/pkg/netrec.exe

@@ -1,0 +1,20 @@
+# Java Runner Configuration (.jrc) for netrec.
+#
+# netrec.exe is a copy of the jr.exe launcher (https://github.com/littlejlib/jr). It finds this
+# file next to itself whatever directory you happen to be standing in, reads the jar path below,
+# and starts the JVM in its own process.
+#
+# The jar path is handed to the JVM verbatim, so a RELATIVE path is resolved against the current
+# directory and not against this folder. install.cmd therefore rewrites the line below to an
+# absolute path. Until it has been run, netrec.exe works only from inside this folder.
+
+java.args=-jar netrec.jar
+
+# AOT cache. The first run writes netrec.<size>.<modtime>.aot next to the jar -- about 55 MB, and
+# that one run is slow. Every run afterwards starts in roughly a fifth of the time, which matters
+# because every netrec command is a short-lived client of the daemon. Set aot=false to skip it.
+#aot=true
+
+# Load the JVM into this process rather than spawning java.exe, so the tool is its own named,
+# killable process: Task Manager shows netrec.exe, and taskkill /IM netrec.exe hits only netrec.
+jvm=dll
