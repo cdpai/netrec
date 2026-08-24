@@ -15,6 +15,20 @@ There is a single persistent daemon. It holds the DB, owns the recorder, and ser
 
 `netrec serve` runs that daemon in the foreground if you want to watch it.
 
+## Install
+
+The only prerequisite is a JDK 21 or newer (25 recommended) with `java.exe` on PATH. Grab the standalone zip from the [latest release](https://github.com/littlejlib/netrec/releases/latest), unzip it anywhere, and run `install.cmd`:
+
+```
+curl -L -o netrec.zip https://github.com/littlejlib/netrec/releases/download/v0.1/netrec-0.1-win-x64.zip
+tar -xf netrec.zip
+netrec\install.cmd
+```
+
+`install.cmd` points `netrec.exe` at the jar beside it and adds the folder to your user PATH. It needs no administrator rights, it is idempotent, and `-NoPath` makes it leave PATH alone. Then open a **new** terminal and run `netrec config`. `HOWTO.md` in the zip walks through an actual capture.
+
+The first run builds a JDK AOT startup cache next to the jar — about half a minute and 30 MB, once. Every run afterwards takes about a second.
+
 ## Build
 
 ```
@@ -22,7 +36,9 @@ netrec stop              # a running daemon holds the jar open, so clean would f
 mvn clean package        # produces target/netrec.jar (shaded uber-jar)
 ```
 
-Installed as a global command: `netrec.exe` (a jr.exe launcher) + `netrec.jrc` in `cmdtools`, pointing at `target/netrec.jar`. Rebuild updates it in place. (Plain alternative: `java -jar target/netrec.jar <args>`.)
+Installed as a global command: `netrec.exe` (a jr.exe launcher) + `netrec.jrc`, pointing at `target/netrec.jar`. Rebuild updates it in place. (Plain alternative: `java -jar target/netrec.jar <args>`.)
+
+`make-dist.cmd` assembles the release zip: everything in `pkg/` plus the shaded jar plus a copy of `jr.exe` (taken from a sibling `jr` checkout or from PATH -- the binary is deliberately not kept in this repo). `make-dist.cmd -Build` runs the maven build first.
 
 ## Quickstart
 
