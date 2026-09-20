@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>io.github.littlejlib</groupId>
-    <artifactId>littlejlib-netrec</artifactId>
+    <groupId>io.github.cdpai</groupId>
+    <artifactId>cdpai-netrec</artifactId>
     <version>0.2</version>
     <packaging>jar</packaging>
 
@@ -10,7 +10,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
-        <main.class>littlejlib.netrec.Netrec</main.class>
+        <main.class>cdpai.netrec.Netrec</main.class>
         <arcadedb.version>25.7.1</arcadedb.version>
         <jackson.version>2.21.2</jackson.version>
         <okhttp.version>4.12.0</okhttp.version>

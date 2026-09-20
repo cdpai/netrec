@@ -17,10 +17,10 @@ There is a single persistent daemon. It holds the DB, owns the recorder, and ser
 
 ## Install
 
-The only prerequisite is a JDK 21 or newer (25 recommended) with `java.exe` on PATH. Grab the standalone zip from the [latest release](https://github.com/littlejlib/netrec/releases/latest), unzip it anywhere, and run `install.cmd`:
+The only prerequisite is a JDK 21 or newer (25 recommended) with `java.exe` on PATH. Grab the standalone zip from the [latest release](https://github.com/cdpai/netrec/releases/latest), unzip it anywhere, and run `install.cmd`:
 
 ```
-curl -L -o netrec.zip https://github.com/littlejlib/netrec/releases/download/v0.2/netrec-0.2-win-x64.zip
+curl -L -o netrec.zip https://github.com/cdpai/netrec/releases/download/v0.2/netrec-0.2-win-x64.zip
 tar -xf netrec.zip
 netrec\install.cmd
 ```
@@ -120,7 +120,7 @@ netrec stop                        # graceful shutdown
 netrec serve [--idle <minutes>]    # foreground daemon; autostarted ones idle out after 8h
 ```
 
-`NETREC_NO_AUTOSTART=1` disables on-demand starting. `NETREC_DEBUG=1` logs CDP target events. Daemon output goes to `~/littlejlib/netrec/daemon.log`.
+`NETREC_NO_AUTOSTART=1` disables on-demand starting. `NETREC_DEBUG=1` logs CDP target events. Daemon output goes to `~/cdpai/netrec/daemon.log`.
 
 ## Cookies — read the jar, don't wait for traffic
 
@@ -148,7 +148,7 @@ The connection is borrowed from the recorder when one is already open on that po
 
 ## Secrets
 
-The store lives at `~/littlejlib/netrec/databases/netrec` and contains **live cookies / auth tokens**. Output masks `Cookie`/`Authorization`/token headers by default — the masking happens in the daemon, so secrets do not cross to stdout at all unless you pass `--reveal` (on `show` / `curl` / `ls`). Cookies rotate quickly: regenerate a `curl --reveal` right before running it.
+The store lives at `~/cdpai/netrec/databases/netrec` and contains **live cookies / auth tokens**. Output masks `Cookie`/`Authorization`/token headers by default — the masking happens in the daemon, so secrets do not cross to stdout at all unless you pass `--reveal` (on `show` / `curl` / `ls`). Cookies rotate quickly: regenerate a `curl --reveal` right before running it.
 
 Getting them off the disk again is `clear`, which is a **dry run unless you pass `--yes`**:
 

@@ -138,7 +138,7 @@ netrec clear --all --yes               drop the database entirely and start empt
 
 Only `--all` genuinely removes the bytes from disk — a selective delete removes the rows, but the data can sit in the storage file until compaction, and `clear` tells you so rather than pretending otherwise. Clear a capture when you are done with it, the same way you would shred a printout of a password.
 
-The store lives in `%USERPROFILE%\littlejlib\netrec\`. Do not put it in a shared or synced folder.
+The store lives in `%USERPROFILE%\cdpai\netrec\`. Do not put it in a shared or synced folder.
 
 ## Working with an AI coding agent
 
@@ -166,7 +166,7 @@ Nothing captured at all — you almost certainly acted before attaching. Attach,
 
 netrec is not a recognised command — you have not opened a new terminal since running `install.cmd`, or PATH was not updated. Run `netrec.exe` from inside the install folder to confirm the tool itself is fine.
 
-The daemon log is at `%USERPROFILE%\littlejlib\netrec\daemon.log`, and setting `NETREC_DEBUG=1` makes it verbose about what the browser is telling it.
+The daemon log is at `%USERPROFILE%\cdpai\netrec\daemon.log`, and setting `NETREC_DEBUG=1` makes it verbose about what the browser is telling it.
 
 ## Where the full reference lives
 
