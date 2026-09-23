@@ -17,8 +17,8 @@ import java.util.logging.Logger;
     footerHeading = "%nQuickstart (through cdpgate, which owns the browser; there is no debug port -- run `netrec config`):%n",
     footer = {
         "  1. cdpg profiles                              which profiles exist (no approval needed)",
-        "  2. netrec tabs --profiles SHR --domains youtube.com     first use: approve netrec in cdpgate's window",
-        "  3. netrec rec --tab <substring> --profiles SHR --domains youtube.com   attach and return (recording outlives the command)",
+        "  2. netrec tabs --profiles Work --domains youtube.com     first use: approve netrec in cdpgate's window",
+        "  3. netrec rec --tab <substring> --profiles Work --domains youtube.com   attach and return (recording outlives the command)",
         "  4. netrec mark \"about to save\"                stamp the timeline, then act in the browser",
         "  5. netrec ls --api --since-mark               what the click actually sent",
         "     netrec ls --writes --since 5m --jq '{method,url,req}'      shaped in the daemon, not by jq downstream",
