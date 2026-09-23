@@ -65,11 +65,35 @@ public final class RecMgr {
         var borrowed = conn != null && conn.alive() && spec.key().equals(connKey);
         var c = borrowed ? conn : spec.open();
         try {
-            var out = Cookies.shape(c.call(null, "Storage.getCookies", J.obj()), url, domain, name, reveal);
+            var out = Cookies.shape(spec.gate() ? jarViaTabs(c) : c.call(null, "Storage.getCookies", J.obj()), url, domain, name, reveal);
             return out.put("conn", spec.key());
         } finally {
             if (!borrowed) c.close();
         }
+    }
+
+    /**
+     * Every approved profile's jar, read through one of its own tabs. Storage.getCookies reads whichever profile the
+     * browser last used -- it moves as the human clicks between windows, so it is the wrong jar as often as not (PRP 05);
+     * Network.getAllCookies on a tab's session reads that tab's profile, always. Through cdpgate, Target.getTargets lists
+     * only the approved profiles' tabs, so one tab per browserContextId covers exactly the approved jars.
+     */
+    static JsonNode jarViaTabs(CdpLink c) {
+        var merged = J.obj();
+        var all = merged.putArray("cookies");
+        var seen = new HashSet<String>();
+        for (var t : c.call(null, "Target.getTargets", J.obj()).path("targetInfos")) {
+            if (!t.path("type").asText().equals("page") || !t.path("url").asText().startsWith("http")) continue;
+            if (!seen.add(t.path("browserContextId").asText(""))) continue;
+            var sid = c.call(null, "Target.attachToTarget", J.obj().put("targetId", t.path("targetId").asText()).put("flatten", true))
+                .path("sessionId").asText(null);
+            if (sid == null) continue;
+            try { c.call(sid, "Network.getAllCookies", J.obj()).path("cookies").forEach(all::add); }
+            finally { c.send(null, "Target.detachFromTarget", J.obj().put("sessionId", sid)); }
+        }
+        if (seen.isEmpty()) throw new IllegalStateException("no open web page in the approved profile(s) to read cookies through"
+            + " -- open any page in that profile, then retry");
+        return merged;
     }
 
     public synchronized ObjectNode stop(String name, boolean all) {
