@@ -16,20 +16,20 @@ public final class RecMgr {
     final Map<String, Sub> byTarget = new ConcurrentHashMap<>();
     final Map<String, String> live = new ConcurrentHashMap<>();
     final RecEvents events = new RecEvents(this);
-    volatile CdpConn conn;
-    volatile int port;
+    volatile CdpLink conn;
+    volatile String connKey;
 
     public RecMgr(Store store) { this.store = store; }
 
     public synchronized ObjectNode start(String name, String tab, boolean all, boolean children,
-                                         int cdpPort, int maxBody, long waitMs) {
-        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, cdpPort, maxBody);
+                                         ConnSpec spec, int maxBody, long waitMs) {
+        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, spec, maxBody);
         if (subs.containsKey(sub.name))
             throw new IllegalStateException("session '" + sub.name + "' is already recording (netrec rec status)");
-        ensureConn(cdpPort);
+        ensureConn(spec);
         sub.capture = new Capture(store, conn, sub.name, maxBody);
         subs.put(sub.name, sub);
-        var tabs = Cdp.tabs(cdpPort);
+        var tabs = tabsFor(spec);
         var byIndex = tab != null && tab.matches("\\d+") && Integer.parseInt(tab) < Cdp.pages(tabs).size();
         sub.adopt = all || (tab != null && !byIndex);
         var matched = Cdp.pickTabs(tabs, tab, all).stream().map(t -> t.path("id").asText()).toList();
@@ -47,21 +47,26 @@ public final class RecMgr {
                 ? "every matching tab is already recorded by session " + taken
                     + " -- query that session, or: netrec rec stop -s " + taken.get(0)
                 : "no tab matches " + (tab == null ? "(default: first page)" : "'" + tab + "'")
-                    + " on cdp port " + cdpPort + " -- seen: " + inventory(tabs)
+                    + " via " + spec.key() + " -- seen: " + inventory(tabs)
                     + "  (netrec tabs, or pass --wait <seconds> to sit until one appears)");
     }
 
+    public static JsonNode tabsFor(ConnSpec spec) {
+        if (!spec.gate()) return Cdp.tabs(spec.port());
+        try (var link = new GateCdpLink(spec.pipeName(), spec.keyName(), spec.scope())) { return Cdp.targetsViaLink(link); }
+    }
+
     /**
-     * Read the browser's cookie jar. Borrows the recorder's CDP connection when one is already open on this port,
-     * otherwise opens a throwaway one and closes it again — so asking for a cookie never leaves a connection behind
-     * and never disturbs a recording in progress.
+     * Read the browser's cookie jar. Borrows the recorder's CDP connection when one is already open on this
+     * connection, otherwise opens a throwaway one and closes it again — so asking for a cookie never leaves a
+     * connection behind and never disturbs a recording in progress.
      */
-    public synchronized ObjectNode cookies(int cdpPort, String url, String domain, String name, boolean reveal) {
-        var borrowed = conn != null && conn.alive() && port == cdpPort;
-        var c = borrowed ? conn : new CdpConn(cdpPort);
+    public synchronized ObjectNode cookies(ConnSpec spec, String url, String domain, String name, boolean reveal) {
+        var borrowed = conn != null && conn.alive() && spec.key().equals(connKey);
+        var c = borrowed ? conn : spec.open();
         try {
             var out = Cookies.shape(c.call(null, "Storage.getCookies", J.obj()), url, domain, name, reveal);
-            return out.put("cdpPort", cdpPort);
+            return out.put("conn", spec.key());
         } finally {
             if (!borrowed) c.close();
         }
@@ -86,7 +91,7 @@ public final class RecMgr {
     public void stopAll() { if (!subs.isEmpty()) stop(null, true); }
 
     public ObjectNode status() {
-        var out = J.obj().put("cdpPort", conn == null ? 0 : port)
+        var out = J.obj().put("conn", conn == null ? "" : connKey)
             .put("connected", conn != null && conn.alive());
         var arr = out.putArray("sessions");
         subs.values().stream().sorted(Comparator.comparing(s -> s.name)).forEach(s -> arr.add(s.json()));
@@ -109,7 +114,7 @@ public final class RecMgr {
         return out.isEmpty() ? "0 targets" : out.size() + " targets [" + String.join(" | ", out) + "]";
     }
 
-    void ensureConn(int p) {
+    void ensureConn(ConnSpec spec) {
         if (conn != null && !conn.alive()) {
             conn.close();
             conn = null;
@@ -118,13 +123,13 @@ public final class RecMgr {
             byTarget.clear();
             live.clear();
         }
-        if (conn != null && port != p)
-            throw new IllegalStateException("already attached to CDP port " + port + " -- stop those sessions first");
+        if (conn != null && !spec.key().equals(connKey))
+            throw new IllegalStateException("already attached via " + connKey + " -- stop those sessions first");
         if (conn == null) {
-            var c = new CdpConn(p);
+            var c = spec.open();
             c.onEvent(events::onEvent);
             conn = c;
-            port = p;
+            connKey = spec.key();
             c.send(null, "Target.setDiscoverTargets", J.obj().put("discover", true));
         }
     }

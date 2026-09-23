@@ -13,7 +13,7 @@ public final class Capture {
     static final Set<String> LOUD = Set.of("Document", "XHR", "Fetch", "EventSource");
 
     final Store store;
-    final CdpConn conn;
+    final CdpLink conn;
     final String session;
     final int maxBody;
     final Map<String, ObjectNode> open = new ConcurrentHashMap<>();
@@ -22,7 +22,7 @@ public final class Capture {
     final Map<String, String[]> targets = new ConcurrentHashMap<>();
     final AtomicInteger seq = new AtomicInteger(), count = new AtomicInteger();
 
-    public Capture(Store store, CdpConn conn, String session, int maxBody) {
+    public Capture(Store store, CdpLink conn, String session, int maxBody) {
         this.store = store; this.conn = conn; this.session = session; this.maxBody = maxBody;
     }
 

@@ -9,7 +9,8 @@ import java.util.concurrent.*;
 public final class Sub {
     final String name, pattern;
     final boolean all, children;
-    final int port, maxBody;
+    final ConnSpec conn;
+    final int maxBody;
     final long startedAt = System.currentTimeMillis();
     final Set<String> cdpSessions = ConcurrentHashMap.newKeySet();
     final Map<String, String[]> targets = new ConcurrentHashMap<>();
@@ -18,9 +19,9 @@ public final class Sub {
     volatile String state = "waiting", lastError;
     volatile boolean adopt;
 
-    public Sub(String name, String pattern, boolean all, boolean children, int port, int maxBody) {
+    public Sub(String name, String pattern, boolean all, boolean children, ConnSpec conn, int maxBody) {
         this.name = name; this.pattern = pattern; this.all = all;
-        this.children = children; this.port = port; this.maxBody = maxBody;
+        this.children = children; this.conn = conn; this.maxBody = maxBody;
     }
 
     void attach(String sid, String type, String url) {
@@ -53,7 +54,7 @@ public final class Sub {
     ObjectNode json() {
         var n = J.obj().put("session", name).put("state", state)
             .put("tab", pattern == null ? "" : pattern).put("all", all).put("children", children)
-            .put("port", port).put("since", startedAt)
+            .put("mode", conn.gate() ? "gate" : "direct").put("conn", conn.key()).put("since", startedAt)
             .put("records", capture == null ? 0 : capture.records());
         if (lastError != null) n.put("error", lastError);
         var arr = n.putArray("targets");

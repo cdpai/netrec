@@ -35,6 +35,23 @@ public final class Cdp {
     }
 
     /**
+     * The gate-mode equivalent of tabs(port)/json/list -- reshapes Target.getTargets' targetInfos
+     * (targetId/type/url/title/...) into the same array-of-{id,type,url,title} shape everything
+     * downstream (pages/pickTabs/hits/inventory) already expects, so none of it needs to know
+     * which transport is in use.
+     */
+    public static JsonNode targetsViaLink(CdpLink link) {
+        var result = link.call(null, "Target.getTargets", J.obj());
+        var out = J.OM.createArrayNode();
+        for (var t : result.path("targetInfos"))
+            out.add(J.obj().put("id", t.path("targetId").asText())
+                .put("type", t.path("type").asText())
+                .put("url", t.path("url").asText())
+                .put("title", t.path("title").asText()));
+        return out;
+    }
+
+    /**
      * http targets, in `netrec tabs` order (so --tab <index> means the same thing).
      * Deliberately does NOT require webSocketDebuggerUrl: Chrome omits it once a debugger is attached,
      * and we attach by targetId over the browser connection anyway -- filtering on it would hide our own tabs.

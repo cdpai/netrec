@@ -2,6 +2,7 @@ package cdpai.netrec.cmd;
 
 import cdpai.netrec.*;
 import picocli.CommandLine.*;
+import java.util.List;
 import java.util.concurrent.Callable;
 
 @Command(name = "cookies", description = "Read the browser's cookie jar over CDP -- no traffic needed, so an auth "
@@ -18,15 +19,27 @@ public final class CookiesCmd implements Callable<Integer> {
     @Option(names = "--reveal", description = "Print real values instead of <redacted>.") boolean reveal;
     @Option(names = "--value-only", description = "Print just the value of the single matching cookie, nothing else "
         + "(implies --reveal; fails unless exactly one cookie matches, so a script can never grab the wrong one).") boolean valueOnly;
-    @Option(names = "--port", description = "CDP debug port. Default: the per-install port from `netrec config`.") Integer port;
+    @Option(names = "--direct", description = "Legacy fallback: connect directly to a debug port instead of "
+        + "through cdpgate. Discouraged. Implied by --port.") boolean direct;
+    @Option(names = "--port", description = "Direct-mode CDP debug port (implies --direct).") Integer port;
     @Option(names = "--json", description = "Output JSON instead of a table.") boolean json;
+    @Option(names = "--domains", split = ",", description = "Gate mode only: scope the cdpgate approval to these "
+        + "domains (comma-separated, no wildcards). Omit for all domains (narrower approval window).") List<String> scopeDomains;
+    @Option(names = "--profiles", split = ",", description = "Gate mode only: scope the cdpgate approval to these "
+        + "profiles, by name or folder as `cdpg profiles` lists them (comma-separated). Omit for all profiles, which earns a short approval.")
+    List<String> scopeProfiles;
+    @Option(names = "--minutes", description = "Gate mode only: requested approval duration in minutes -- shown to "
+        + "the human approving, not guaranteed.") Integer minutes;
 
     public Integer call() {
-        var body = J.obj().put("reveal", reveal || valueOnly);
+        var body = J.obj().put("reveal", reveal || valueOnly).put("direct", direct);
         if (url != null) body.put("url", url);
         if (domain != null) body.put("domain", domain);
         if (name != null) body.put("name", name);
         if (port != null) body.put("port", port);
+        J.putStrList(body, "domains", scopeDomains);
+        J.putStrList(body, "profiles", scopeProfiles);
+        if (minutes != null) body.put("minutes", minutes);
         var r = Api.call("/cookies", body, true);
         var cookies = r.path("cookies");
 
@@ -44,8 +57,8 @@ public final class CookiesCmd implements Callable<Integer> {
         if (json) { System.out.println(J.pretty(r)); return 0; }
         if (cookies.size() == 0) {
             System.err.println("no cookie matches (jar holds " + r.path("total").asInt() + ") -- "
-                + "check the site is actually logged in, and that this is the right browser profile on cdp port "
-                + r.path("cdpPort").asInt());
+                + "check the site is actually logged in, and that this is the right browser profile ("
+                + r.path("conn").asText() + ")");
             return 1;
         }
         for (var c : cookies) {

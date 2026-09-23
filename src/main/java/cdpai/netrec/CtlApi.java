@@ -3,6 +3,8 @@ package cdpai.netrec;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.*;
 
+import cdpai.gate.client.ScopeRequest;
+
 /** Handlers behind the ctl API: query+projection, recorder control, marks, lifecycle. */
 public final class CtlApi {
     final Hub hub;
@@ -72,13 +74,19 @@ public final class CtlApi {
 
     JsonNode recStart(JsonNode in) throws Exception {
         return rec.start(J.str(in, "session"), J.str(in, "tab"), J.b(in, "all", false),
-            J.b(in, "children", true), J.i(in, "port", Settings.load().cdpPort()),
+            J.b(in, "children", true), connSpec(in),
             J.i(in, "maxBody", 2_000_000), J.l(in, "waitMs", 0));
     }
 
     JsonNode cookies(JsonNode in) {
-        return rec.cookies(J.i(in, "port", Settings.load().cdpPort()), J.str(in, "url"),
+        return rec.cookies(connSpec(in), J.str(in, "url"),
             J.str(in, "domain"), J.str(in, "name"), J.b(in, "reveal", false));
+    }
+
+    static ConnSpec connSpec(JsonNode in) {
+        var portField = in.hasNonNull("port") ? in.get("port").asInt() : null;
+        var scope = new ScopeRequest(J.strList(in, "domains"), J.strList(in, "profiles"), J.integer(in, "minutes"));
+        return ConnSpec.resolve(Settings.load(), portField, J.b(in, "direct", false), scope);
     }
 
     JsonNode recStop(JsonNode in) {

@@ -20,7 +20,7 @@ public final class RecStatusCmd implements Callable<Integer> {
             System.out.println("not recording  (daemon up, nothing attached)");
             return 1;
         }
-        System.out.println("cdp port " + r.path("cdpPort").asInt() + "  connected=" + r.path("connected").asBoolean());
+        System.out.println("conn " + r.path("conn").asText() + "  connected=" + r.path("connected").asBoolean());
         for (var s : sessions) {
             System.out.println(String.format("%-10s %-20s %6d records  since %s", s.path("state").asText(),
                 s.path("session").asText(), s.path("records").asInt(), J.iso(s.path("since").asLong())));

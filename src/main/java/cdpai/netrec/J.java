@@ -36,6 +36,21 @@ public final class J {
     public static int i(JsonNode n, String field, int def) { return n.hasNonNull(field) ? n.get(field).asInt() : def; }
     public static long l(JsonNode n, String field, long def) { return n.hasNonNull(field) ? n.get(field).asLong() : def; }
     public static boolean b(JsonNode n, String field, boolean def) { return n.hasNonNull(field) ? n.get(field).asBoolean() : def; }
+    public static Integer integer(JsonNode n, String field) { return n.hasNonNull(field) ? n.get(field).asInt() : null; }
+
+    /** Absent field -> null ("unscoped"); present -> the string list, even if empty. Mirrors ScopeRequest's own null/empty distinction. */
+    public static java.util.List<String> strList(JsonNode n, String field) {
+        if (!n.hasNonNull(field)) return null;
+        var out = new java.util.ArrayList<String>();
+        for (var e : n.get(field)) out.add(e.asText());
+        return out;
+    }
+
+    public static void putStrList(ObjectNode node, String field, java.util.List<String> values) {
+        if (values == null) return;
+        var arr = node.putArray(field);
+        values.forEach(arr::add);
+    }
 
     static final DateTimeFormatter CLOCK = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 

@@ -9,10 +9,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 /**
- * One websocket to the browser-level CDP endpoint. Commands are addressed to flat session ids, so a single
- * connection covers every attached tab, iframe and worker. Blocking `call` must not be used from a listener.
+ * One websocket DIRECTLY to the browser's debug port -- the legacy, discouraged fallback now that
+ * cdpgate exists (see GateCdpLink, the default). Requires the browser to have been launched with
+ * --remote-debugging-port, unauthenticated, reachable by any local process. Commands are addressed
+ * to flat session ids, so a single connection covers every attached tab, iframe and worker.
+ * Blocking `call` must not be used from a listener.
  */
-public final class CdpConn extends WebSocketListener {
+public final class CdpConn extends WebSocketListener implements CdpLink {
     final int port;
     final OkHttpClient client = new OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS).pingInterval(30, TimeUnit.SECONDS).build();
@@ -33,9 +36,9 @@ public final class CdpConn extends WebSocketListener {
         if (failure != null) throw new IllegalStateException("CDP: " + failure);
     }
 
-    public void onEvent(BiConsumer<String, JsonNode> listener) { listeners.add(listener); }
+    @Override public void onEvent(BiConsumer<String, JsonNode> listener) { listeners.add(listener); }
 
-    public CompletableFuture<JsonNode> send(String sessionId, String method, ObjectNode params) {
+    @Override public CompletableFuture<JsonNode> send(String sessionId, String method, ObjectNode params) {
         var id = nextId.incrementAndGet();
         var f = new CompletableFuture<JsonNode>();
         pending.put(id, f);
@@ -50,7 +53,7 @@ public final class CdpConn extends WebSocketListener {
         return f;
     }
 
-    public JsonNode call(String sessionId, String method, ObjectNode params) {
+    @Override public JsonNode call(String sessionId, String method, ObjectNode params) {
         try { return send(sessionId, method, params).get(20, TimeUnit.SECONDS); }
         catch (ExecutionException e) { throw new IllegalStateException(method + ": " + e.getCause().getMessage()); }
         catch (Exception e) { throw new IllegalStateException(method + ": " + e); }
@@ -85,9 +88,9 @@ public final class CdpConn extends WebSocketListener {
 
     @Override public void onClosed(WebSocket w, int code, String reason) { ws = null; }
 
-    public boolean alive() { return ws != null; }
+    @Override public boolean alive() { return ws != null; }
 
-    public void close() {
+    @Override public void close() {
         var w = ws;
         ws = null;
         if (w != null) w.close(1000, "bye");
