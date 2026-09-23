@@ -14,21 +14,23 @@ import java.util.logging.Logger;
         + "and expose it to the CLI / an AI agent so it can inspect what happened and synthesize replay code. "
         + "Architecture: one persistent daemon holds the DB and owns the recorder; every command (rec included) "
         + "is a thin, fast client of its localhost ctl API, and starts the daemon if none is running.",
-    footerHeading = "%nQuickstart (the CDP debug port is per-install, NOT 9222 -- run `netrec config`):%n",
+    footerHeading = "%nQuickstart (through cdpgate, which owns the browser; there is no debug port -- run `netrec config`):%n",
     footer = {
-        "  1. netrec config [--detect]                  the debug port + browser launch command",
-        "  2. <browser> --remote-debugging-port=<PORT>   launch Chrome/Vivaldi with that port",
-        "  3. netrec rec --tab <substring>               attach and return (recording outlives the command)",
+        "  1. cdpg profiles                              which profiles exist (no approval needed)",
+        "  2. netrec tabs --profiles SHR --domains youtube.com     first use: approve netrec in cdpgate's window",
+        "  3. netrec rec --tab <substring> --profiles SHR --domains youtube.com   attach and return (recording outlives the command)",
         "  4. netrec mark \"about to save\"                stamp the timeline, then act in the browser",
         "  5. netrec ls --api --since-mark               what the click actually sent",
         "     netrec ls --writes --since 5m --jq '{method,url,req}'      shaped in the daemon, not by jq downstream",
         "     netrec show <id> --req                     request side only (the answer, 9 times out of 10)",
         "     netrec curl <id> --reveal                  ready-to-run replay with real auth",
-        "     netrec cookies --url <host>                the jar itself (auth cookie + expiry), no traffic needed",
+        "     netrec cookies --url <host>                the jar itself (auth cookie + expiry), no traffic needed; the",
+        "                                                whole profile's jar -- --domains limits tabs, not cookies",
         "  6. netrec rec stop        netrec status        netrec stop   (graceful; closes the DB properly)",
         "",
         "Data + settings live in ~/cdpai/netrec/. Captures contain live cookies; output masks secrets",
-        "unless --reveal. Capture scope is printed when you attach -- trust nothing it did not claim to see." })
+        "unless --reveal. Capture scope is printed when you attach -- trust nothing it did not claim to see.",
+        "Legacy: --direct / --port connect to a --remote-debugging-port browser instead (discouraged)." })
 public final class Netrec {
     static {
         System.setProperty("polyglot.engine.WarnInterpreterOnly", "false");
