@@ -110,7 +110,7 @@
     </build>
 
     <!-- netrec.exe, a jr launcher (github.com/jarrunner/jr) with its config baked in, built by
-         jr-maven-plugin. Opt-in, because the plugin is not on Maven Central yet:
+         jr-maven-plugin (on Maven Central). Opt-in, so a plain build stays a plain jar build:
              mvn -Djrexe package                      an exe that runs the jar just built (target/jr)
              mvn -Djrexe -Djr.installDir=<dir> package    and copies it to <dir>
              mvn -Djrexe -Djr.source=url package      a release exe: fetches its jar from this version's
@@ -130,7 +130,7 @@
                     <plugin>
                         <groupId>io.github.jarrunner</groupId>
                         <artifactId>jr-maven-plugin</artifactId>
-                        <version>1.0-SNAPSHOT</version>
+                        <version>1.1.0</version>
                         <executions>
                             <execution>
                                 <goals>
