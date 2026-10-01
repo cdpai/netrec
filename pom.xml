@@ -145,6 +145,7 @@
                             <productName>netrec</productName>
                             <companyName>cdpai</companyName>
                             <copyright>cdpai contributors</copyright>
+                            <icon>${project.basedir}/src/main/jr/netrec.ico</icon>
                             <javaVersion>25+</javaVersion>
                             <jvmMode>dll</jvmMode>
                             <vmArgs>
