@@ -18,6 +18,7 @@ public final class RecMgr {
     final RecEvents events = new RecEvents(this);
     volatile CdpLink conn;
     volatile String connKey;
+    volatile cdpai.gate.client.ScopeRequest connScope;
 
     public RecMgr(Store store) { this.store = store; }
 
@@ -65,7 +66,7 @@ public final class RecMgr {
         var borrowed = conn != null && conn.alive() && spec.key().equals(connKey);
         var c = borrowed ? conn : spec.open();
         try {
-            var out = Cookies.shape(spec.gate() ? jarViaTabs(c) : c.call(null, "Storage.getCookies", J.obj()), url, domain, name, reveal);
+            var out = Cookies.shape(spec.gate() ? jarViaTabs(c, borrowed ? live : java.util.Map.of()) : c.call(null, "Storage.getCookies", J.obj()), url, domain, name, reveal);
             return out.put("conn", spec.key());
         } finally {
             if (!borrowed) c.close();
@@ -78,18 +79,23 @@ public final class RecMgr {
      * Network.getAllCookies on a tab's session reads that tab's profile, always. Through cdpgate, Target.getTargets lists
      * only the approved profiles' tabs, so one tab per browserContextId covers exactly the approved jars.
      */
-    static JsonNode jarViaTabs(CdpLink c) {
+    /// `recorded` maps targetId to the recorder's own live session when the connection is borrowed. Such a
+    /// tab is read through that session: attaching a second one made the recorder detach it as a duplicate
+    /// (so the read failed with "that session does not belong to this connection"), and that detach also
+    /// dropped the recorder's own byTarget entry for a tab it was still recording. Found 2026-10-03.
+    static JsonNode jarViaTabs(CdpLink c, java.util.Map<String, String> recorded) {
         var merged = J.obj();
         var all = merged.putArray("cookies");
         var seen = new HashSet<String>();
         for (var t : c.call(null, "Target.getTargets", J.obj()).path("targetInfos")) {
             if (!t.path("type").asText().equals("page") || !t.path("url").asText().startsWith("http")) continue;
             if (!seen.add(t.path("browserContextId").asText(""))) continue;
-            var sid = c.call(null, "Target.attachToTarget", J.obj().put("targetId", t.path("targetId").asText()).put("flatten", true))
+            var reuse = recorded.get(t.path("targetId").asText());
+            var sid = reuse != null ? reuse : c.call(null, "Target.attachToTarget", J.obj().put("targetId", t.path("targetId").asText()).put("flatten", true))
                 .path("sessionId").asText(null);
             if (sid == null) continue;
             try { c.call(sid, "Network.getAllCookies", J.obj()).path("cookies").forEach(all::add); }
-            finally { c.send(null, "Target.detachFromTarget", J.obj().put("sessionId", sid)); }
+            finally { if (reuse == null) c.send(null, "Target.detachFromTarget", J.obj().put("sessionId", sid)); }
         }
         if (seen.isEmpty()) throw new IllegalStateException("no open web page in the approved profile(s) to read cookies through"
             + " -- open any page in that profile, then retry");
@@ -139,13 +145,17 @@ public final class RecMgr {
     }
 
     void ensureConn(ConnSpec spec) {
-        if (conn != null && !conn.alive()) {
-            conn.close();
-            conn = null;
-            subs.values().forEach(s -> { s.state = "lost"; s.cdpSessions.clear(); s.targets.clear(); });
-            bySession.clear();
-            byTarget.clear();
-            live.clear();
+        if (conn != null && !conn.alive()) dropConn("lost");
+        // A gate connection carries the scope cdpgate approved when it opened; a tab outside it is
+        // refused at attach. So a request for a different scope needs its own connection -- reuse
+        // only when the scope is the same. Found 2026-10-03: after recording example.com, a rec for
+        // another site was attempted over the old link and failed "target not in the approved scope".
+        if (conn != null && spec.gate() && spec.key().equals(connKey) && !sameScope(spec.scope(), connScope)) {
+            var recording = subs.values().stream().filter(s -> "recording".equals(s.state)).map(s -> s.name).toList();
+            if (!recording.isEmpty())
+                throw new IllegalStateException("the cdpgate connection is approved for " + describe(connScope) + " and " + recording
+                    + " is recording on it -- ask for the same --profiles/--domains, or stop it first: netrec rec stop -s " + recording.get(0));
+            dropConn("stopped");
         }
         if (conn != null && !spec.key().equals(connKey))
             throw new IllegalStateException("already attached via " + connKey + " -- stop those sessions first");
@@ -154,8 +164,34 @@ public final class RecMgr {
             c.onEvent(events::onEvent);
             conn = c;
             connKey = spec.key();
+            connScope = spec.scope();
             c.send(null, "Target.setDiscoverTargets", J.obj().put("discover", true));
         }
+    }
+
+    void dropConn(String subState) {
+        conn.close();
+        conn = null;
+        connScope = null;
+        subs.values().forEach(s -> { if (!"stopped".equals(s.state)) s.state = subState; s.cdpSessions.clear(); s.targets.clear(); });
+        bySession.clear();
+        byTarget.clear();
+        live.clear();
+    }
+
+    /// Same profiles and domains, in any order; the requested duration does not change what is reachable.
+    static boolean sameScope(cdpai.gate.client.ScopeRequest a, cdpai.gate.client.ScopeRequest b) {
+        if (a == null || b == null) return a == b;
+        return java.util.Objects.equals(set(a.domains()), set(b.domains())) && java.util.Objects.equals(set(a.profiles()), set(b.profiles()));
+    }
+
+    static java.util.Set<String> set(java.util.List<String> l) {
+        return l == null ? null : new java.util.TreeSet<>(l.stream().map(String::toLowerCase).toList());
+    }
+
+    static String describe(cdpai.gate.client.ScopeRequest s) {
+        if (s == null) return "(unknown scope)";
+        return "profiles " + (s.profiles() == null ? "ALL" : s.profiles()) + ", domains " + (s.domains() == null ? "ALL" : s.domains());
     }
 
     void claim(Sub sub, String targetId) {
