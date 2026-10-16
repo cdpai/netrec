@@ -46,7 +46,7 @@ public final class Daemon {
     }
 
     /** Same ceiling the jrexe profile bakes into netrec.exe: a resident daemon must not grow to a quarter of RAM. */
-    static final List<String> JVM_FLAGS = List.of("--enable-native-access=ALL-UNNAMED", "-Xmx1g", "-XX:+UseSerialGC",
+    static final List<String> JVM_FLAGS = List.of("--enable-native-access=ALL-UNNAMED", "-Xmx384m", "-XX:+UseSerialGC",
         "-XX:MinHeapFreeRatio=10", "-XX:MaxHeapFreeRatio=30", "-XX:MaxMetaspaceSize=256m",
         "-XX:MaxDirectMemorySize=256m", "-XX:ReservedCodeCacheSize=96m");
 

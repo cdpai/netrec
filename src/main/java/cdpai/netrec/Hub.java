@@ -22,10 +22,16 @@ public final class Hub {
         cfg.setValue(SERVER_ROOT_PASSWORD, J.ROOT_PW);
         cfg.setValue(SERVER_DATABASE_DIRECTORY, J.dbDir().toString());
         cfg.setValue(HA_ENABLED, false);
-        // ArcadeDB sizes its page cache for a database server; this is a recorder on a workstation.
-        cfg.setValue(MAX_PAGE_RAM, 128);
-        cfg.setValue(INDEX_COMPACTION_RAM_MB, 32);
-        cfg.setValue(SQL_STATEMENT_CACHE, 32);
+        // ArcadeDB sizes everything for a database server; this is a recorder on a workstation. Measured on a 549 MB
+        // store: queries stream, and 32 MB of page cache is enough to run them in a 160 MB heap (128 MB failed at 192 MB).
+        cfg.setValue(MAX_PAGE_RAM, 32);
+        cfg.setValue(INDEX_COMPACTION_RAM_MB, 16);
+        cfg.setValue(SQL_STATEMENT_CACHE, 16);
+        cfg.setValue(INITIAL_PAGE_CACHE_SIZE, 256);
+        cfg.setValue(PAGE_FLUSH_QUEUE, 32);
+        cfg.setValue(ASYNC_WORKER_THREADS, 2);
+        cfg.setValue(ASYNC_OPERATIONS_QUEUE_SIZE, 64);
+        cfg.setValue(TX_WAL_FILES, 2);
         cfg.setValue(SERVER_HTTP_INCOMING_HOST, "127.0.0.1");
         cfg.setValue(SERVER_HTTP_INCOMING_PORT, portSpec);
         server = new ArcadeDBServer(cfg);

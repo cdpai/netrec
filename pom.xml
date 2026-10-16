@@ -150,7 +150,7 @@
                             <jvmMode>dll</jvmMode>
                             <vmArgs>
                                 <vmArg>--enable-native-access=ALL-UNNAMED</vmArg>
-                                <vmArg>-Xmx1g</vmArg>
+                                <vmArg>-Xmx384m</vmArg>
                                 <vmArg>-XX:+UseSerialGC</vmArg>
                                 <vmArg>-XX:MinHeapFreeRatio=10</vmArg>
                                 <vmArg>-XX:MaxHeapFreeRatio=30</vmArg>
