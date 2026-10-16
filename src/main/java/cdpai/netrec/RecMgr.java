@@ -22,13 +22,14 @@ public final class RecMgr {
 
     public RecMgr(Store store) { this.store = store; }
 
-    public synchronized ObjectNode start(String name, String tab, boolean all, boolean children,
+    public synchronized ObjectNode start(String name, String tab, boolean all, boolean children, boolean ws,
                                          ConnSpec spec, int maxBody, long waitMs) {
-        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, spec, maxBody);
+        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, ws, spec, maxBody);
         if (subs.containsKey(sub.name))
             throw new IllegalStateException("session '" + sub.name + "' is already recording (netrec rec status)");
         ensureConn(spec);
         sub.capture = new Capture(store, conn, sub.name, maxBody);
+        if (ws) sub.capture.ws = new WsCapture(sub.capture);
         subs.put(sub.name, sub);
         var tabs = tabsFor(spec);
         var byIndex = tab != null && tab.matches("\\d+") && Integer.parseInt(tab) < Cdp.pages(tabs).size();

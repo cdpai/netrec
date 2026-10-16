@@ -22,6 +22,10 @@ public final class Hub {
         cfg.setValue(SERVER_ROOT_PASSWORD, J.ROOT_PW);
         cfg.setValue(SERVER_DATABASE_DIRECTORY, J.dbDir().toString());
         cfg.setValue(HA_ENABLED, false);
+        // ArcadeDB sizes its page cache for a database server; this is a recorder on a workstation.
+        cfg.setValue(MAX_PAGE_RAM, 128);
+        cfg.setValue(INDEX_COMPACTION_RAM_MB, 32);
+        cfg.setValue(SQL_STATEMENT_CACHE, 32);
         cfg.setValue(SERVER_HTTP_INCOMING_HOST, "127.0.0.1");
         cfg.setValue(SERVER_HTTP_INCOMING_PORT, portSpec);
         server = new ArcadeDBServer(cfg);
@@ -61,6 +65,16 @@ public final class Hub {
         t.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "session");
         t.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "host");
         t.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "ts");
+        var w = db.getSchema().getOrCreateDocumentType("WsFrame");
+        w.getOrCreateProperty("id", Type.STRING);
+        w.getOrCreateProperty("session", Type.STRING);
+        w.getOrCreateProperty("host", Type.STRING);
+        w.getOrCreateProperty("ts", Type.LONG);
+        w.getOrCreateProperty("n", Type.INTEGER);
+        w.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, true, "id");
+        w.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "session");
+        w.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "host");
+        w.getOrCreateTypeIndex(Schema.INDEX_TYPE.LSM_TREE, false, "ts");
         var m = db.getSchema().getOrCreateDocumentType("Mark");
         m.getOrCreateProperty("ts", Type.LONG);
         m.getOrCreateProperty("label", Type.STRING);

@@ -18,6 +18,8 @@ public final class RecCmd implements Callable<Integer> {
     @Option(names = "--port", description = "Direct-mode CDP debug port (implies --direct). Default in direct mode: "
         + "the per-install port from `netrec config`.") Integer port;
     @Option(names = "--max-body", defaultValue = "2000000", description = "Max stored body bytes per side (default 2 MB).") int maxBody;
+    @Option(names = "--ws", description = "EXPERIMENTAL: also record WebSocket frames (both directions, workers and iframes included with --children). "
+        + "Passive -- the socket is never touched -- but chatty sockets make the store grow fast. Read with `netrec ls --ws`.") boolean ws;
     @Option(names = "--wait", defaultValue = "0", description = "Seconds to sit until a matching tab appears (default 0 = fail fast).") long wait;
     @Option(names = "--children", negatable = true, defaultValue = "true",
         description = "Auto-attach the page's iframes and workers (default true; --no-children to skip).") boolean children;
@@ -30,7 +32,7 @@ public final class RecCmd implements Callable<Integer> {
         + "the human approving, not guaranteed.") Integer minutes;
 
     public Integer call() {
-        var body = J.obj().put("all", all).put("children", children).put("maxBody", maxBody).put("waitMs", wait * 1000)
+        var body = J.obj().put("all", all).put("children", children).put("ws", ws).put("maxBody", maxBody).put("waitMs", wait * 1000)
             .put("direct", direct);
         if (tab != null) body.put("tab", tab);
         if (session != null) body.put("session", session);

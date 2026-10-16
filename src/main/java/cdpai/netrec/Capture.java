@@ -20,7 +20,8 @@ public final class Capture {
     final Map<String, JsonNode> extra = new ConcurrentHashMap<>();
     final Set<String> written = ConcurrentHashMap.newKeySet();
     final Map<String, String[]> targets = new ConcurrentHashMap<>();
-    final AtomicInteger seq = new AtomicInteger(), count = new AtomicInteger();
+    final AtomicInteger seq = new AtomicInteger(), count = new AtomicInteger(), wsCount = new AtomicInteger();
+    WsCapture ws;
 
     public Capture(Store store, CdpLink conn, String session, int maxBody) {
         this.store = store; this.conn = conn; this.session = session; this.maxBody = maxBody;
@@ -29,6 +30,7 @@ public final class Capture {
     public void noteTarget(String sid, String url, String type) { targets.put(sid, new String[] { url, type }); }
     public void forgetTarget(String sid) { targets.remove(sid); }
     public int records() { return count.get(); }
+    public int wsFrames() { return wsCount.get(); }
 
     public void onEvent(String sid, JsonNode msg) {
         var p = msg.path("params");
@@ -38,7 +40,7 @@ public final class Capture {
             case "Network.responseReceived" -> onResponse(sid, p);
             case "Network.loadingFinished" -> onFinished(sid, p);
             case "Network.loadingFailed" -> onFailed(sid, p);
-            default -> {}
+            default -> { if (ws != null && msg.path("method").asText("").startsWith("Network.webSocket")) ws.onEvent(sid, msg); }
         }
     }
 
@@ -130,7 +132,10 @@ public final class Capture {
     }
 
     /** Write whatever is still in flight (called on stop) so nothing is silently dropped. */
-    public void flush() { new ArrayList<>(open.keySet()).forEach(this::finish); }
+    public void flush() {
+        new ArrayList<>(open.keySet()).forEach(this::finish);
+        if (ws != null) ws.flush();
+    }
 
     String cap(String s, ObjectNode n, String flag) {
         if (s != null && s.length() > maxBody) { n.put(flag, true); return s.substring(0, maxBody); }

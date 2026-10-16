@@ -109,6 +109,10 @@ When you attach, netrec prints exactly what it attached to. Trust nothing it did
 - **Redirects** reuse the CDP request id — only the final hop is kept.
 - Bodies are capped at `--max-body` (2 MB per side); truncation is flagged in the record.
 
+- **WebSockets (experimental, `rec --ws`, off by default).** Both directions of every page socket, workers and iframes included (same auto-attach), into `WsFrame` rows: `dir` (open, handshake, sent, received, error, close), `url`, `socketOpenedAt`, `opcode` (1 text, 2 binary), `size`, `preview` (text: 200 chars; binary: first 64 bytes as hex) and `payload` (text as is, binary as base64, capped by `--max-body`). Read with `netrec ls --ws [--dir sent,received] [--since-mark] [--jq ...]`; `netrec show <session>:ws<n> --out file` writes the decoded payload. It only listens to events the browser already emits, so it never touches the socket. Proven on Canva's `wss://www.canva.com/_stream`.
+- **Miss (WebSocket):** frames sent before attach (start `rec --ws`, then load or reload the page); control frames (ping/pong) are probably not reported; shared and service workers only if auto-attach reaches them. A very chatty socket makes the store and the daemon's write queue grow.
+- **Trap when driving a page while recording:** CDP `Input.insertText` and key events land in the browser-FOCUSED tab whatever target they were sent to, so two sessions typing at once cross-wire. Activate the target tab first and let nobody else type.
+
 ## Sessions, marks, lifecycle
 
 ```

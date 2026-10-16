@@ -30,12 +30,14 @@ public final class Store {
         return n;
     }
 
-    public void insert(String type, ObjectNode n) {
-        db.transaction(() -> {
+    public void insert(String type, ObjectNode n) { insertAll(type, List.of(n)); }
+
+    public void insertAll(String type, List<ObjectNode> rows) {
+        db.transaction(() -> rows.forEach(n -> {
             var doc = db.newDocument(type);
             n.fields().forEachRemaining(e -> doc.set(e.getKey(), value(e.getValue())));
             doc.save();
-        });
+        }));
     }
 
     public long count(String type) { return count(type, null, null); }

@@ -6,13 +6,14 @@ import java.util.*;
 /** Record-shape projection (the π to `ls`'s σ): header parsing, body selection, JSON body parsing, field pruning. */
 public final class Project {
     static final List<String> HEADERS = List.of("reqHeaders", "reqExtraHeaders", "respHeaders");
-    static final List<String> BODIES = List.of("reqBody", "respBody");
+    static final List<String> BODIES = List.of("reqBody", "respBody", "payload");
 
     private Project() {}
 
     /** Headers become objects (masked unless reveal); JSON bodies also appear parsed as .req / .resp. */
     public static ObjectNode enrich(ObjectNode r, boolean reveal, boolean parse) {
         for (var f : HEADERS) if (r.has(f)) r.set(f, J.headers(r.path(f).asText(), reveal));
+        if (parse && r.has("payload") && r.path("opcode").asInt() != 2) put(r, "data", r.path("payload").asText());
         if (parse) {
             if (r.has("reqBody")) put(r, "req", r.path("reqBody").asText());
             if (r.has("respBody")) put(r, "resp", r.path("respBody").asText());

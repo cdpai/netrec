@@ -49,7 +49,7 @@ public final class CtlApi {
             .put("recording", rec.busy())
             .put("ctlPort", J.CTL_PORT).put("hubPort", hub.httpPort())
             .put("db", J.dbDir().resolve(J.DB_NAME).toString())
-            .put("records", store.count("ReqRec"));
+            .put("records", store.count("ReqRec")).put("wsFrames", store.count("WsFrame"));
     }
 
     JsonNode q(JsonNode in) {
@@ -74,7 +74,7 @@ public final class CtlApi {
 
     JsonNode recStart(JsonNode in) throws Exception {
         return rec.start(J.str(in, "session"), J.str(in, "tab"), J.b(in, "all", false),
-            J.b(in, "children", true), connSpec(in),
+            J.b(in, "children", true), J.b(in, "ws", false), connSpec(in),
             J.i(in, "maxBody", 2_000_000), J.l(in, "waitMs", 0));
     }
 
@@ -113,7 +113,7 @@ public final class CtlApi {
         var out = J.obj().put("applied", apply);
         if (J.b(in, "all", false)) {
             if (rec.busy()) throw new IllegalStateException("something is still recording -- netrec rec stop --all first");
-            out.put("mode", "wipe").put("records", store.count("ReqRec")).put("marks", store.count("Mark"));
+            out.put("mode", "wipe").put("records", store.count("ReqRec")).put("wsFrames", store.count("WsFrame")).put("marks", store.count("Mark"));
             if (apply) {
                 var wipedAt = System.currentTimeMillis();
                 store.rebind(hub.recreate());
@@ -126,10 +126,12 @@ public final class CtlApi {
         if (where == null) throw new IllegalArgumentException("a selector is required: --session / --older-than / --host / --all");
         var params = params(in);
         out.put("mode", "delete").put("records", store.count("ReqRec", where, params));
+        out.put("wsFrames", store.count("WsFrame", where, params));
         var marksWhere = J.str(in, "marksWhere");
         if (marksWhere != null) out.put("marks", store.count("Mark", marksWhere, params));
         if (apply) {
             out.put("deletedRecords", store.delete("ReqRec", where, params));
+            out.put("deletedWsFrames", store.delete("WsFrame", where, params));
             if (marksWhere != null) out.put("deletedMarks", store.delete("Mark", marksWhere, params));
         }
         return out;

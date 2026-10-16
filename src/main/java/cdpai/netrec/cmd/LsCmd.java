@@ -19,6 +19,9 @@ public final class LsCmd implements Callable<Integer> {
         description = "Everything after the newest mark (optionally the newest whose label matches).") String sinceMark;
     @Option(names = "--writes", description = "Shorthand for --method POST,PUT,PATCH,DELETE -- what did that click send?") boolean writes;
     @Option(names = "--api", description = "Shorthand for --type XHR,Fetch -- drops the _next/static and beacon noise.") boolean api;
+    @Option(names = "--ws", description = "EXPERIMENTAL: select WebSocket frames recorded with `rec --ws` instead of HTTP records. Newest first; "
+        + "--jq/--fields/--body-head/--since/--since-mark/--url/--host apply. Payload is in .payload (binary frames: base64) and .data (JSON text parsed with --jq).") boolean ws;
+    @Option(names = "--dir", split = ",", description = "With --ws: open, handshake, sent, received, error, close (comma list).") List<String> dir;
     @Option(names = { "-n", "--limit" }, defaultValue = "50") int limit;
     @Option(names = "--jq", description = "jq expression per record; JSON bodies are pre-parsed as .req / .resp.") String jq;
     @Option(names = "--fields", description = "Comma list of fields to keep.") String fields;
@@ -30,8 +33,12 @@ public final class LsCmd implements Callable<Integer> {
 
     static final List<String> WRITE_METHODS = List.of("POST", "PUT", "PATCH", "DELETE");
     static final String COLUMNS = "id,ts,method,status,host,url,resourceType,state,session";
+    static final String WS_COLUMNS = "id,ts,dir,opcode,size,host,url,preview,session";
 
     public Integer call() {
+        if (ws && (method != null || writes || api || type != null || status != null))
+            throw new IllegalArgumentException("--method/--writes/--api/--type/--status do not apply to WebSocket frames; use --dir, --host, --url, --since");
+        if (dir != null && !ws) throw new IllegalArgumentException("--dir needs --ws");
         var w = new Where();
         if (session != null) w.eq("session", session);
         if (host != null) w.like("host", host);
@@ -45,12 +52,13 @@ public final class LsCmd implements Callable<Integer> {
         if (type != null) types.addAll(type);
         if (api) types.addAll(List.of("XHR", "Fetch"));
         if (!types.isEmpty()) w.in("resourceType", types.stream().distinct().toList(), false);
+        if (dir != null) w.in("dir", dir, false);
         if (since != null) w.gte("ts", System.currentTimeMillis() - J.parseSince(since));
         if (sinceMark != null) w.gte("ts", markTs(sinceMark));
 
         var wide = jq != null || fields != null || body != null || bodyHead > 0;
         var q = J.obj()
-            .put("sql", w.sql(wide ? "*" : COLUMNS, "ReqRec", "ts desc", limit))
+            .put("sql", ws ? w.sql(wide ? "*" : WS_COLUMNS, "WsFrame", "ts desc, n desc", limit) : w.sql(wide ? "*" : COLUMNS, "ReqRec", "ts desc", limit))
             .put("reveal", reveal).put("bodyHead", bodyHead);
         q.set("params", J.OM.valueToTree(w.params()));
         if (jq != null) q.put("jq", jq);
@@ -61,7 +69,8 @@ public final class LsCmd implements Callable<Integer> {
         if (jq != null) { rows.forEach(r -> System.out.println(r.isTextual() ? r.asText() : r.toString())); return 0; }
         if (!table) { System.out.println(J.pretty(rows)); return 0; }
         for (var r : rows)
-            System.out.printf("%-14s  %-6s %3s  %-22s %s%n", r.path("id").asText(),
+            if (ws) System.out.printf("%-18s  %-9s %s  %6s  %s%n", r.path("id").asText(), r.path("dir").asText(), r.path("opcode").asText("-"), r.path("size").asText("-"), trim(r.path("preview").asText(r.path("url").asText()), 80));
+            else System.out.printf("%-14s  %-6s %3s  %-22s %s%n", r.path("id").asText(),
                 r.path("method").asText(), r.path("status").asText("-"),
                 trim(r.path("host").asText(), 22), trim(r.path("url").asText(), 70));
         return 0;

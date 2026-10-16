@@ -150,6 +150,13 @@
                             <jvmMode>dll</jvmMode>
                             <vmArgs>
                                 <vmArg>--enable-native-access=ALL-UNNAMED</vmArg>
+                                <vmArg>-Xmx1g</vmArg>
+                                <vmArg>-XX:+UseSerialGC</vmArg>
+                                <vmArg>-XX:MinHeapFreeRatio=10</vmArg>
+                                <vmArg>-XX:MaxHeapFreeRatio=30</vmArg>
+                                <vmArg>-XX:MaxMetaspaceSize=256m</vmArg>
+                                <vmArg>-XX:MaxDirectMemorySize=256m</vmArg>
+                                <vmArg>-XX:ReservedCodeCacheSize=96m</vmArg>
                             </vmArgs>
                             <jarUrl>https://github.com/cdpai/netrec/releases/download/v${project.version}/netrec.jar</jarUrl>
                             <updateUrl>https://github.com/cdpai/netrec/releases/latest/download/netrec.update.json</updateUrl>

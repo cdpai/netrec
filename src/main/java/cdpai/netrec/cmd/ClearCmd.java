@@ -50,13 +50,13 @@ public final class ClearCmd implements Callable<Integer> {
             return 0;
         }
         if (!yes) {
-            System.out.println("would delete " + n + " records"
+            System.out.println("would delete " + n + " records" + (r.path("wsFrames").asLong() > 0 ? ", " + r.path("wsFrames").asLong() + " websocket frames" : "")
                 + (r.has("marks") ? " and " + r.path("marks").asLong() + " marks" : "") + "  (add --yes)");
             if (n > 0) System.out.println("note: this is a logical delete -- bytes may sit in the ArcadeDB bucket "
                 + "until compaction. For a real scrub use: netrec clear --all --yes");
             return 0;
         }
-        System.out.println("deleted " + r.path("deletedRecords").asLong() + " records"
+        System.out.println("deleted " + r.path("deletedRecords").asLong() + " records" + (r.path("deletedWsFrames").asLong() > 0 ? ", " + r.path("deletedWsFrames").asLong() + " websocket frames" : "")
             + (r.has("deletedMarks") ? " and " + r.path("deletedMarks").asLong() + " marks" : ""));
         return 0;
     }

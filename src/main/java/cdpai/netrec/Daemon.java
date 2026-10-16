@@ -37,10 +37,18 @@ public final class Daemon {
         var code = Path.of(Netrec.class.getProtectionDomain().getCodeSource().getLocation().toURI());
         var win = System.getProperty("os.name").toLowerCase().contains("win");
         var java = Path.of(System.getProperty("java.home"), "bin", win ? "javaw.exe" : "java").toString();
-        return Files.isDirectory(code)
-            ? List.of(java, "-cp", code.toString(), "cdpai.netrec.Netrec", "serve", "--idle", IDLE_MINUTES)
-            : List.of(java, "-jar", code.toString(), "serve", "--idle", IDLE_MINUTES);
+        var cmd = new ArrayList<String>(List.of(java));
+        cmd.addAll(JVM_FLAGS);
+        if (Files.isDirectory(code)) cmd.addAll(List.of("-cp", code.toString(), "cdpai.netrec.Netrec"));
+        else cmd.addAll(List.of("-jar", code.toString()));
+        cmd.addAll(List.of("serve", "--idle", IDLE_MINUTES));
+        return cmd;
     }
+
+    /** Same ceiling the jrexe profile bakes into netrec.exe: a resident daemon must not grow to a quarter of RAM. */
+    static final List<String> JVM_FLAGS = List.of("--enable-native-access=ALL-UNNAMED", "-Xmx1g", "-XX:+UseSerialGC",
+        "-XX:MinHeapFreeRatio=10", "-XX:MaxHeapFreeRatio=30", "-XX:MaxMetaspaceSize=256m",
+        "-XX:MaxDirectMemorySize=256m", "-XX:ReservedCodeCacheSize=96m");
 
     static void waitUp(long ms) {
         var end = System.currentTimeMillis() + ms;
