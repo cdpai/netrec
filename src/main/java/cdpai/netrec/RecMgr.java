@@ -22,9 +22,9 @@ public final class RecMgr {
 
     public RecMgr(Store store) { this.store = store; }
 
-    public synchronized ObjectNode start(String name, String tab, boolean all, boolean children, boolean ws,
+    public synchronized ObjectNode start(String name, String tab, boolean all, boolean children, boolean ws, boolean extensions,
                                          ConnSpec spec, int maxBody, long waitMs) {
-        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, ws, spec, maxBody);
+        var sub = new Sub(name == null ? "rec-" + System.currentTimeMillis() : name, tab, all, children, ws, extensions, spec, maxBody);
         if (subs.containsKey(sub.name))
             throw new IllegalStateException("session '" + sub.name + "' is already recording (netrec rec status)");
         ensureConn(spec);
@@ -32,9 +32,9 @@ public final class RecMgr {
         if (ws) sub.capture.ws = new WsCapture(sub.capture);
         subs.put(sub.name, sub);
         var tabs = tabsFor(spec);
-        var byIndex = tab != null && tab.matches("\\d+") && Integer.parseInt(tab) < Cdp.pages(tabs).size();
+        var byIndex = tab != null && tab.matches("\\d+") && Integer.parseInt(tab) < Cdp.pages(tabs, extensions).size();
         sub.adopt = all || (tab != null && !byIndex);
-        var matched = Cdp.pickTabs(tabs, tab, all).stream().map(t -> t.path("id").asText()).toList();
+        var matched = Cdp.pickTabs(tabs, tab, all, extensions).stream().map(t -> t.path("id").asText()).toList();
         var free = matched.stream().filter(id -> byTarget.get(id) == null).toList();
         var taken = matched.stream().map(byTarget::get).filter(s -> s != null && s != sub).map(s -> s.name).distinct().toList();
         var ours = byTarget.containsValue(sub);

@@ -8,7 +8,7 @@ import java.util.concurrent.*;
 /** One named recording subscription: a target pattern the daemon keeps satisfied, not a process you are locked to. */
 public final class Sub {
     final String name, pattern;
-    final boolean all, children, ws;
+    final boolean all, children, ws, extensions;
     final ConnSpec conn;
     final int maxBody;
     final long startedAt = System.currentTimeMillis();
@@ -19,9 +19,9 @@ public final class Sub {
     volatile String state = "waiting", lastError;
     volatile boolean adopt;
 
-    public Sub(String name, String pattern, boolean all, boolean children, boolean ws, ConnSpec conn, int maxBody) {
+    public Sub(String name, String pattern, boolean all, boolean children, boolean ws, boolean extensions, ConnSpec conn, int maxBody) {
         this.name = name; this.pattern = pattern; this.all = all;
-        this.children = children; this.ws = ws; this.conn = conn; this.maxBody = maxBody;
+        this.children = children; this.ws = ws; this.extensions = extensions; this.conn = conn; this.maxBody = maxBody;
     }
 
     void attach(String sid, String type, String url) {
@@ -46,14 +46,15 @@ public final class Sub {
     /** Should a target that appeared (or navigated) after start be adopted by this subscription? */
     boolean wants(JsonNode targetInfo) {
         if (!adopt || "stopped".equals(state)) return false;
-        if (!"page".equals(targetInfo.path("type").asText())) return false;
-        if (!targetInfo.path("url").asText("").startsWith("http")) return false;
+        var ext = extensions && Cdp.isExtension(targetInfo);
+        if (!ext && !"page".equals(targetInfo.path("type").asText())) return false;
+        if (!Cdp.listed(targetInfo, extensions)) return false;
         return all || (pattern != null && Cdp.hits(targetInfo, pattern));
     }
 
     ObjectNode json() {
         var n = J.obj().put("session", name).put("state", state)
-            .put("tab", pattern == null ? "" : pattern).put("all", all).put("children", children).put("ws", ws)
+            .put("tab", pattern == null ? "" : pattern).put("all", all).put("children", children).put("ws", ws).put("extensions", extensions)
             .put("mode", conn.gate() ? "gate" : "direct").put("conn", conn.key()).put("since", startedAt)
             .put("records", capture == null ? 0 : capture.records())
             .put("wsFrames", capture == null ? 0 : capture.wsFrames());

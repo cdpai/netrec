@@ -53,7 +53,7 @@ public final class RecEvents {
         try {
             watch("Network.enable[" + type + "]",
                 m.conn.send(child, "Network.enable", J.obj().put("maxPostDataSize", 5_000_000)));
-            if (sub.children)
+            if (sub.children && !(Cdp.isExtension(info) && !"page".equals(type)))
                 watch("Target.setAutoAttach[" + type + "]", m.conn.send(child, "Target.setAutoAttach", J.obj()
                     .put("autoAttach", true).put("waitForDebuggerOnStart", true).put("flatten", true)));
         } finally {

@@ -110,6 +110,12 @@ When you attach, netrec prints exactly what it attached to. Trust nothing it did
 - Bodies are capped at `--max-body` (2 MB per side); truncation is flagged in the record.
 
 - **WebSockets (experimental, `rec --ws`, off by default).** Both directions of every page socket, workers and iframes included (same auto-attach), into `WsFrame` rows: `dir` (open, handshake, sent, received, error, close), `url`, `socketOpenedAt`, `opcode` (1 text, 2 binary), `size`, `preview` (text: 200 chars; binary: first 64 bytes as hex) and `payload` (text as is, binary as base64, capped by `--max-body`). Read with `netrec ls --ws [--dir sent,received] [--since-mark] [--jq ...]`; `netrec show <session>:ws<n> --out file` writes the decoded payload. It only listens to events the browser already emits, so it never touches the socket. Proven on Canva's `wss://www.canva.com/_stream`.
+- **Browser extensions (opt-in, `--extensions` on `tabs` and `rec`).** By default only http pages (and their workers) are listed. With the flag, an extension's service worker, background page and `chrome-extension://` pages are listed and recordable too; `tabs --extensions` shows the target type and the extension id, and `rec --tab <extension-id>` selects that worker by its url. Through cdpgate the domain of such a target is the extension id, so scope the approval with `--domains <extension-id>`:
+  ```
+  netrec tabs --extensions --profiles <name> --domains <extension-id>
+  netrec rec --extensions --tab <extension-id> --profiles <name> --domains <extension-id>
+  ```
+  Netrec only attaches to targets that already exist and enables the Network domain on them. A worker that the browser has stopped is not a target until something wakes it.
 - **Miss (WebSocket):** frames sent before attach (start `rec --ws`, then load or reload the page); control frames (ping/pong) are probably not reported; shared and service workers only if auto-attach reaches them. A very chatty socket makes the store and the daemon's write queue grow.
 - **Trap when driving a page while recording:** CDP `Input.insertText` and key events land in the browser-FOCUSED tab whatever target they were sent to, so two sessions typing at once cross-wire. Activate the target tab first and let nobody else type.
 

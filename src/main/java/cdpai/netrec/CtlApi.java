@@ -74,7 +74,7 @@ public final class CtlApi {
 
     JsonNode recStart(JsonNode in) throws Exception {
         return rec.start(J.str(in, "session"), J.str(in, "tab"), J.b(in, "all", false),
-            J.b(in, "children", true), J.b(in, "ws", false), connSpec(in),
+            J.b(in, "children", true), J.b(in, "ws", false), J.b(in, "extensions", false), connSpec(in),
             J.i(in, "maxBody", 2_000_000), J.l(in, "waitMs", 0));
     }
 

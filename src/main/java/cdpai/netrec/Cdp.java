@@ -12,6 +12,9 @@ import java.util.zip.*;
 public final class Cdp {
     private Cdp() {}
 
+    static final String EXT_SCHEME = "chrome-extension://";
+    static final Set<String> EXT_TYPES = Set.of("service_worker", "background_page", "page");
+
     public static JsonNode tabs(int port) {
         try { return J.OM.readTree(httpGet("http://127.0.0.1:" + port + "/json/list")); }
         catch (ConnectException e) {
@@ -56,21 +59,42 @@ public final class Cdp {
      * Deliberately does NOT require webSocketDebuggerUrl: Chrome omits it once a debugger is attached,
      * and we attach by targetId over the browser connection anyway -- filtering on it would hide our own tabs.
      */
-    public static List<JsonNode> pages(JsonNode tabs) {
+    public static List<JsonNode> pages(JsonNode tabs) { return pages(tabs, false); }
+
+    public static List<JsonNode> pages(JsonNode tabs, boolean extensions) {
         var out = new ArrayList<JsonNode>();
         if (!tabs.isArray()) return out;
         for (var t : tabs)
-            if (t.path("id").isTextual() && t.path("url").asText("").startsWith("http")) out.add(t);
+            if (t.path("id").isTextual() && listed(t, extensions)) out.add(t);
         return out;
     }
 
+    /** An http target; with extensions on, also an extension's service worker, background page or page. Takes a /json/list entry or a targetInfo. */
+    public static boolean listed(JsonNode t, boolean extensions) {
+        return t.path("url").asText("").startsWith("http") || (extensions && isExtension(t));
+    }
+
+    public static boolean isExtension(JsonNode t) {
+        return t.path("url").asText("").startsWith(EXT_SCHEME) && EXT_TYPES.contains(t.path("type").asText());
+    }
+
+    /** The 32-letter extension id of a chrome-extension:// url, or "". */
+    public static String extensionId(String url) {
+        if (!url.startsWith(EXT_SCHEME)) return "";
+        var rest = url.substring(EXT_SCHEME.length());
+        var end = rest.indexOf('/');
+        return end < 0 ? rest : rest.substring(0, end);
+    }
+
     /** Every page matching: index, url/title substring, all pages, or the first page when match is null. */
-    public static List<JsonNode> pickTabs(JsonNode tabs, String match, boolean all) {
-        var pages = pages(tabs);
+    public static List<JsonNode> pickTabs(JsonNode tabs, String match, boolean all) { return pickTabs(tabs, match, all, false); }
+
+    public static List<JsonNode> pickTabs(JsonNode tabs, String match, boolean all, boolean extensions) {
+        var pages = pages(tabs, extensions);
         if (pages.isEmpty()) return List.of();
-        if (all) return pages.stream().filter(t -> "page".equals(t.path("type").asText())).toList();
+        if (all) return pages.stream().filter(t -> "page".equals(t.path("type").asText()) || isExtension(t)).toList();
         if (match == null) {
-            for (var t : pages) if ("page".equals(t.path("type").asText())) return List.of(t);
+            for (var t : pages) if ("page".equals(t.path("type").asText()) && !isExtension(t)) return List.of(t);
             return List.of(pages.get(0));
         }
         if (match.matches("\\d+")) {

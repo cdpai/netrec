@@ -20,6 +20,10 @@ public final class RecCmd implements Callable<Integer> {
     @Option(names = "--max-body", defaultValue = "2000000", description = "Max stored body bytes per side (default 2 MB).") int maxBody;
     @Option(names = "--ws", description = "EXPERIMENTAL: also record WebSocket frames (both directions, workers and iframes included with --children). "
         + "Passive -- the socket is never touched -- but chatty sockets make the store grow fast. Read with `netrec ls --ws`.") boolean ws;
+    @Option(names = "--extensions", description = "Also attach to browser-extension targets: service workers, background pages and "
+        + "chrome-extension:// pages. --tab then matches the url, so the extension id picks its worker. In gate mode the cdpgate "
+        + "domain of an extension target is its extension id: scope with --domains <extension-id>. "
+        + "Example: netrec rec --extensions --tab <extension-id> --profiles <name> --domains <extension-id>") boolean extensions;
     @Option(names = "--wait", defaultValue = "0", description = "Seconds to sit until a matching tab appears (default 0 = fail fast).") long wait;
     @Option(names = "--children", negatable = true, defaultValue = "true",
         description = "Auto-attach the page's iframes and workers (default true; --no-children to skip).") boolean children;
@@ -32,7 +36,7 @@ public final class RecCmd implements Callable<Integer> {
         + "the human approving, not guaranteed.") Integer minutes;
 
     public Integer call() {
-        var body = J.obj().put("all", all).put("children", children).put("ws", ws).put("maxBody", maxBody).put("waitMs", wait * 1000)
+        var body = J.obj().put("all", all).put("children", children).put("ws", ws).put("extensions", extensions).put("maxBody", maxBody).put("waitMs", wait * 1000)
             .put("direct", direct);
         if (tab != null) body.put("tab", tab);
         if (session != null) body.put("session", session);
@@ -44,7 +48,7 @@ public final class RecCmd implements Callable<Integer> {
         var state = r.path("state").asText();
         System.out.println(state + "  session=" + r.path("session").asText() + "  targets=" + r.path("targets").size());
         for (var t : r.path("targets"))
-            System.out.println("  " + String.format("%-14s", t.path("type").asText()) + t.path("url").asText());
+            System.out.println("  " + String.format(extensions ? "%-15s" : "%-14s", t.path("type").asText()) + t.path("url").asText());
         if (!children) System.err.println("[netrec] --no-children: iframe / service-worker traffic will NOT be captured");
         if (all || tab != null) System.err.println("[netrec] this is a standing subscription: more targets may attach "
             + "after this command returned -- netrec rec status shows the full set");
