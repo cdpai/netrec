@@ -7,6 +7,9 @@
     <packaging>jar</packaging>
 
     <properties>
+        <!-- jrexe: the exe version (release.ps1 passes X.Y.Z or X.Y.Z-beta.N) and its update channel -->
+        <jrexe.version>${project.version}</jrexe.version>
+        <jrexe.channel>stable</jrexe.channel>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -158,8 +161,12 @@
                                 <vmArg>-XX:MaxDirectMemorySize=256m</vmArg>
                                 <vmArg>-XX:ReservedCodeCacheSize=96m</vmArg>
                             </vmArgs>
-                            <jarUrl>https://github.com/cdpai/netrec/releases/download/v${project.version}/netrec.jar</jarUrl>
-                            <updateUrl>https://github.com/cdpai/netrec/releases/latest/download/netrec.update.json</updateUrl>
+                            <!-- no natives, so one jar serves every platform: the Windows exe and a universal macOS binary from one run -->
+                            <platforms><platform>windows</platform><platform>macos</platform></platforms>
+                            <appVersion>${jrexe.version}</appVersion>
+                            <jarUrl>https://github.com/cdpai/netrec/releases/download/v${jrexe.version}/netrec-{sha8}.jar</jarUrl>
+                            <updateUrl>https://leasegate.github.io/netrec/update/netrec.json</updateUrl>
+                            <updateChannel>${jrexe.channel}</updateChannel>
                         </configuration>
                     </plugin>
                 </plugins>

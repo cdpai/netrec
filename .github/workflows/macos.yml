@@ -1,0 +1,71 @@
+# macOS proof for netrec, on GitHub's Mac runners.
+# - build: from a clean ~/.m2 (cdpai-gate-client is built from cdpai/gate first: it is on no repository),
+#   the jrexe profile builds the universal macOS binary, and it answers.
+# - release: installs a published release with the online command and checks it against SHA256SUMS and the
+#   update file. Run it by hand with the tag, after release.ps1 -Publish and the site push.
+# Publishes nothing and needs no secrets.
+name: macos
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: a release tag to install and check (for example v0.3-beta.1); empty runs only the build
+        default: ''
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
+        with:
+          repository: cdpai/gate
+          path: gate
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: build cdpai-gate-client, then netrec and its macOS binary
+        run: |
+          sw_vers; uname -m
+          (cd gate && mvn -B -ntp -DskipTests -pl client -am install)
+          mvn -B -ntp -DskipTests -Djrexe -Djr.platforms=macos package
+          file target/jr/macos/netrec
+          target/jr/macos/netrec --help
+
+  release:
+    if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ inputs.tag }}
+      BASE: https://github.com/cdpai/netrec/releases/download/${{ inputs.tag }}
+    steps:
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: install with the online command from the release notes
+        run: |
+          sw_vers; uname -m
+          mkdir -p ~/.local/bin
+          curl -fLo ~/.local/bin/netrec "$BASE/netrec" && chmod +x ~/.local/bin/netrec
+      - name: the binary matches SHA256SUMS
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/SHA256SUMS" "$BASE/SHA256SUMS"
+          want=$(grep "  netrec$" "$RUNNER_TEMP/SHA256SUMS" | cut -d' ' -f1)
+          test -n "$want" && test "$want" = "$(shasum -a 256 ~/.local/bin/netrec | cut -d' ' -f1)"
+      - name: netrec runs (fetches its jar from the release, checked against the sha256 it carries)
+        run: ~/.local/bin/netrec --help
+      - name: update check says this release is current (run after the site serves the new update file)
+        run: |
+          v=${TAG#v}
+          ~/.local/bin/netrec -Xjr:update-check -Xjr:batch | tee "$RUNNER_TEMP/u.json"
+          grep -q "\"status\":\"current\",\"version\":\"$v\"" "$RUNNER_TEMP/u.json"
